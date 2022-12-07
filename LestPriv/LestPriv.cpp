@@ -35,19 +35,19 @@ bool SetLowIntegrityLevel() {
 		return false;
 	}
 
-    TOKEN_MANDATORY_LABEL mandatoryLabel{};
+    TOKEN_MANDATORY_LABEL integrityLabel{};
     PSID pSidIL = NULL;
     ConvertStringSidToSid(L"S-1-16-4096", &pSidIL);
-    mandatoryLabel.Label.Attributes = SE_GROUP_INTEGRITY | SE_GROUP_INTEGRITY_ENABLED;
-    mandatoryLabel.Label.Sid = pSidIL;
+    integrityLabel.Label.Attributes = SE_GROUP_INTEGRITY | SE_GROUP_INTEGRITY_ENABLED;
+    integrityLabel.Label.Sid = pSidIL;
 
     DWORD dwTokenSize = 0;
-    if (!GetTokenInformation(hToken, TokenIntegrityLevel, (LPVOID)&mandatoryLabel, dwTokenSize, &dwTokenSize)) {
+	if (!GetTokenInformation(hToken, TokenIntegrityLevel, (LPVOID)&integrityLabel, dwTokenSize, &dwTokenSize) && GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
         if (pSidIL) free(pSidIL);
         return false;
     }
 	
-    if (!SetTokenInformation(hToken, TokenIntegrityLevel, (LPVOID)&mandatoryLabel, dwTokenSize)) {
+    if (!SetTokenInformation(hToken, TokenIntegrityLevel, (LPVOID)&integrityLabel, dwTokenSize)) {
         if (pSidIL) free(pSidIL);
         return false;
     }
