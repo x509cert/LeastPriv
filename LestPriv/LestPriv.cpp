@@ -6,23 +6,34 @@
 
 bool RemovePrivilege(_In_z_ LPCWSTR privilege) {
     HANDLE hToken{};
-    BOOL retVal = OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken);
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken)) {
+		return false;
+	}
 
     LUID luid{};
-    retVal = LookupPrivilegeValue(NULL, privilege, &luid);
+	if (!LookupPrivilegeValue(NULL, privilege, &luid)) {
+		CloseHandle(hToken);
+		return false;
+	}   
 
     TOKEN_PRIVILEGES tp{};
     tp.PrivilegeCount = 1;
     tp.Privileges[0].Luid = luid;
     tp.Privileges[0].Attributes = SE_PRIVILEGE_REMOVED;
 
-    retVal = AdjustTokenPrivileges(hToken, false, &tp, 0, NULL, NULL);
-    return retVal;
+	if (!AdjustTokenPrivileges(hToken, false, &tp, 0, NULL, NULL)) {
+		CloseHandle(hToken);
+		return false;
+	}
+
+    return true;
 }
 
 bool SetLowIntegrityLevel() {
     HANDLE hToken{};
-    BOOL retVal = OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken);
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken)) {
+		return false;
+	}
 
     TOKEN_MANDATORY_LABEL mandatoryLabel{};
     PSID pSidIL = NULL;
@@ -31,12 +42,19 @@ bool SetLowIntegrityLevel() {
     mandatoryLabel.Label.Sid = pSidIL;
 
     DWORD dwTokenSize = 0;
-    retVal = GetTokenInformation(hToken, TokenIntegrityLevel, (LPVOID)&mandatoryLabel, dwTokenSize, &dwTokenSize);
-    retVal = SetTokenInformation(hToken, TokenIntegrityLevel, (LPVOID)&mandatoryLabel, dwTokenSize);
-
+    if (!GetTokenInformation(hToken, TokenIntegrityLevel, (LPVOID)&mandatoryLabel, dwTokenSize, &dwTokenSize)) {
+        if (pSidIL) free(pSidIL);
+        return false;
+    }
+	
+    if (!SetTokenInformation(hToken, TokenIntegrityLevel, (LPVOID)&mandatoryLabel, dwTokenSize)) {
+        if (pSidIL) free(pSidIL);
+        return false;
+    }
+	
     if (pSidIL) free(pSidIL);
 
-    return retVal;
+    return true;
 }
 
 void main() {
