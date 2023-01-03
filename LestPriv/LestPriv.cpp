@@ -9,14 +9,21 @@
 _Check_return_ bool RemovePrivileges(_In_ const std::vector<std::wstring> privsToRemove)
 {
     if (privsToRemove.size() == 0)
+    {
         return false;
+    }
 	
     HANDLE hToken{};
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken))
+    {
         return false;
-
+    }
+	
     TOKEN_PRIVILEGES* pTokenPrivs = (TOKEN_PRIVILEGES*)malloc(sizeof(TOKEN_PRIVILEGES) + sizeof(LUID_AND_ATTRIBUTES) * privsToRemove.size());
-    if (!pTokenPrivs) return false;
+    if (!pTokenPrivs)
+    {
+        return false;
+    }
 	
     pTokenPrivs->PrivilegeCount = privsToRemove.size();
 
@@ -33,19 +40,32 @@ _Check_return_ bool RemovePrivileges(_In_ const std::vector<std::wstring> privsT
         pTokenPrivs->Privileges[i].Attributes = SE_PRIVILEGE_REMOVED;
     }
 
-	if (!fRes || !AdjustTokenPrivileges(hToken, FALSE, pTokenPrivs, sizeof(TOKEN_PRIVILEGES) + sizeof(LUID_AND_ATTRIBUTES) * privsToRemove.size(), NULL, NULL))
-		fRes = false;
-
-    if (pTokenPrivs) free(pTokenPrivs);
-    if (hToken) CloseHandle(hToken);
-
+    if (!fRes || !AdjustTokenPrivileges(hToken, FALSE, pTokenPrivs, sizeof(TOKEN_PRIVILEGES) + sizeof(LUID_AND_ATTRIBUTES) * privsToRemove.size(), NULL, NULL))
+    {
+        fRes = false;
+    }
+	
+    if (pTokenPrivs)
+    {
+        free(pTokenPrivs);
+        pTokenPrivs = nullptr;
+    }
+	
+    if (hToken)
+    {
+        CloseHandle(hToken);
+        hToken = nullptr;
+    }
+	
     return fRes;
 }
 
 _Check_return_ bool SetLowIntegrityLevel() {
     HANDLE hToken{};
-	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken)) 
-		return false;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken))
+    {
+        return false;
+    }
 
     TOKEN_MANDATORY_LABEL integrityLabel{};
     PSID pSidIntgrityLabel = NULL;
@@ -55,13 +75,27 @@ _Check_return_ bool SetLowIntegrityLevel() {
 
     bool fRes = true;
     DWORD dwTokenSize = 0;
-	if (!GetTokenInformation(hToken, TokenIntegrityLevel, (LPVOID)&integrityLabel, dwTokenSize, &dwTokenSize) && GetLastError() != ERROR_INSUFFICIENT_BUFFER) 
+    if (!GetTokenInformation(hToken, TokenIntegrityLevel, reinterpret_cast<LPVOID>(&integrityLabel), dwTokenSize, &dwTokenSize) && GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+    {
         fRes = false;
-    
-    if (!fRes|| !SetTokenInformation(hToken, TokenIntegrityLevel, (LPVOID)&integrityLabel, dwTokenSize)) 
+    }
+	
+    if (!fRes || !SetTokenInformation(hToken, TokenIntegrityLevel, reinterpret_cast<LPVOID>(&integrityLabel), dwTokenSize))
+    {
         fRes = false;
-    
-    if (pSidIntgrityLabel) free(pSidIntgrityLabel);
+    }
+	
+    if (pSidIntgrityLabel)
+    {
+        free(pSidIntgrityLabel);
+        pSidIntgrityLabel = nullptr;
+    }
+
+    if (hToken)
+    {
+        CloseHandle(hToken);
+        hToken = nullptr;
+    }
 
     return fRes;
 }
@@ -73,7 +107,8 @@ int main() {
                                            SE_DEBUG_NAME, SE_IMPERSONATE_NAME,  SE_CREATE_GLOBAL_NAME, SE_CREATE_TOKEN_NAME, 
                                            SE_SECURITY_NAME, SE_RELABEL_NAME, SE_LOAD_DRIVER_NAME, SE_SYSTEMTIME_NAME };
 
-    if (RemovePrivileges(privs) == false || SetLowIntegrityLevel() == false) {
+    if (RemovePrivileges(privs) == false || SetLowIntegrityLevel() == false) 
+    {
         printf("Failed to remove privileges or set low integrity level");
         return false;
     }
