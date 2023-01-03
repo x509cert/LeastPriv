@@ -1,3 +1,11 @@
+// This sample code shows how to dynamically remove dangerous privileges and set the process to low integrity.
+// Note that the code uses only std:wstring and std:vector from STL, 
+// these instances could be replaced with other classes if needed, 
+// or plain C++ arrays and Unicode string pointers.
+// 
+// Author Michael Howard (mikehow@microsoft.com)
+// Jan 3rd, 2023
+
 #include <windows.h>
 #include <sddl.h>
 #include <string>
@@ -5,6 +13,7 @@
 #include "sal.h"
 
 #pragma comment(lib, "advapi32.lib")
+
 
 _Check_return_ bool RemovePrivileges(_In_ const std::vector<std::wstring> privsToRemove)
 {
