@@ -94,7 +94,7 @@ _Check_return_ bool SetLowIntegrityLevel() {
 	
     if (pSidIntgrityLabel)
     {
-        LocalFree(&pSidIntgrityLabel);
+        LocalFree(pSidIntgrityLabel);
     }
 
     if (hToken)
