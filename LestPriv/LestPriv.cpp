@@ -1,6 +1,6 @@
 // This sample code shows how to dynamically remove dangerous privileges and set the process to low integrity.
 // Note that the code uses only std:wstring and std:vector from STL, 
-// these instances could be replaced with other classes if needed, 
+// these instances could be replaced with other classes, 
 // or plain C++ arrays and Unicode string pointers.
 // 
 // Author Michael Howard (mikehow@microsoft.com)
@@ -57,13 +57,11 @@ _Check_return_ bool RemovePrivileges(_In_ const std::vector<std::wstring> privsT
     if (pTokenPrivs)
     {
         free(pTokenPrivs);
-        pTokenPrivs = nullptr;
     }
 	
     if (hToken)
     {
         CloseHandle(hToken);
-        hToken = nullptr;
     }
 	
     return fRes;
@@ -96,17 +94,34 @@ _Check_return_ bool SetLowIntegrityLevel() {
 	
     if (pSidIntgrityLabel)
     {
-        free(pSidIntgrityLabel);
-        pSidIntgrityLabel = nullptr;
+        LocalFree(&pSidIntgrityLabel);
     }
 
     if (hToken)
     {
         CloseHandle(hToken);
-        hToken = nullptr;
     }
 
     return fRes;
+}
+
+void WriteToWindowsFolder() 
+{
+    FILE *pFile{};
+    fopen_s(&pFile, "c:\\windows\\system32\\test.txt", "w");
+
+    // Check if the file was successfully opened
+    if (pFile == NULL) {
+        perror("Could not open file");
+        return;
+    }
+
+    // Write to the file
+    const char* str = "This is a test.";
+    fwrite(str, sizeof(char), strlen(str), pFile);
+
+    // Close the file
+    fclose(pFile);
 }
 
 int main() {
@@ -115,6 +130,8 @@ int main() {
     const std::vector<std::wstring> privs{ SE_BACKUP_NAME, SE_RESTORE_NAME, SE_TCB_NAME, SE_TAKE_OWNERSHIP_NAME, 
                                            SE_DEBUG_NAME, SE_IMPERSONATE_NAME,  SE_CREATE_GLOBAL_NAME, SE_CREATE_TOKEN_NAME, 
                                            SE_SECURITY_NAME, SE_RELABEL_NAME, SE_LOAD_DRIVER_NAME, SE_SYSTEMTIME_NAME };
+
+    WriteToWindowsFolder();
 
     if (RemovePrivileges(privs) == false || SetLowIntegrityLevel() == false) 
     {
