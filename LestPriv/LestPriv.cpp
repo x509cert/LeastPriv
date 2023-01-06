@@ -75,10 +75,13 @@ _Check_return_ bool SetLowIntegrityLevel() {
     }
 
     TOKEN_MANDATORY_LABEL integrityLabel{};
-    PSID pSidIntgrityLabel = NULL;
-    ConvertStringSidToSid(L"S-1-16-4096", &pSidIntgrityLabel);
+    SID LowIntegritySid = {
+      SID_REVISION, 1,
+      {SECURITY_MANDATORY_LABEL_AUTHORITY},
+      SECURITY_MANDATORY_LOW_RID };
     integrityLabel.Label.Attributes = SE_GROUP_INTEGRITY | SE_GROUP_INTEGRITY_ENABLED;
-    integrityLabel.Label.Sid = pSidIntgrityLabel;
+    integrityLabel.Label.Sid = &LowIntegritySid;
+
 
     bool fRes = true;
     DWORD dwTokenSize = 0;
@@ -91,11 +94,6 @@ _Check_return_ bool SetLowIntegrityLevel() {
     {
         fRes = false;
     }
-	
-    if (pSidIntgrityLabel)
-    {
-        LocalFree(pSidIntgrityLabel);
-    }
 
     if (hToken)
     {
@@ -105,24 +103,7 @@ _Check_return_ bool SetLowIntegrityLevel() {
     return fRes;
 }
 
-void WriteToWindowsFolder() 
-{
-    FILE *pFile{};
-    fopen_s(&pFile, "c:\\windows\\system32\\test.txt", "w");
 
-    // Check if the file was successfully opened
-    if (pFile == NULL) {
-        perror("Could not open file");
-        return;
-    }
-
-    // Write to the file
-    const char* str = "This is a test.";
-    fwrite(str, sizeof(char), strlen(str), pFile);
-
-    // Close the file
-    fclose(pFile);
-}
 
 int main() {
 
@@ -130,9 +111,8 @@ int main() {
     const std::vector<std::wstring> privs{ SE_BACKUP_NAME, SE_RESTORE_NAME, SE_TCB_NAME, SE_TAKE_OWNERSHIP_NAME, 
                                            SE_DEBUG_NAME, SE_IMPERSONATE_NAME,  SE_CREATE_GLOBAL_NAME, SE_CREATE_TOKEN_NAME, 
                                            SE_SECURITY_NAME, SE_RELABEL_NAME, SE_LOAD_DRIVER_NAME, SE_SYSTEMTIME_NAME };
-
-    WriteToWindowsFolder();
-
+    
+    // reduce privilge and integrity level
     if (RemovePrivileges(privs) == false || SetLowIntegrityLevel() == false) 
     {
         printf("Failed to remove privileges or set low integrity level");
