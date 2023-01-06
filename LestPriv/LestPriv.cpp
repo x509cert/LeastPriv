@@ -67,7 +67,8 @@ _Check_return_ bool RemovePrivileges(_In_ const std::vector<std::wstring> privsT
     return fRes;
 }
 
-_Check_return_ bool SetLowIntegrityLevel() {
+_Check_return_ bool SetLowIntegrityLevel() 
+{
     HANDLE hToken{};
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken))
     {
@@ -75,12 +76,12 @@ _Check_return_ bool SetLowIntegrityLevel() {
     }
 
     TOKEN_MANDATORY_LABEL integrityLabel{};
-    SID LowIntegritySid = {
+    SID sidLowIntegrity = {
       SID_REVISION, 1,
       {SECURITY_MANDATORY_LABEL_AUTHORITY},
       SECURITY_MANDATORY_LOW_RID };
     integrityLabel.Label.Attributes = SE_GROUP_INTEGRITY | SE_GROUP_INTEGRITY_ENABLED;
-    integrityLabel.Label.Sid = &LowIntegritySid;
+    integrityLabel.Label.Sid = &sidLowIntegrity;
 
 
     bool fRes = true;
