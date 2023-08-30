@@ -1,8 +1,3 @@
-// This sample code shows how to dynamically remove dangerous privileges and set the process to low integrity.
-// Note that the code uses only std:wstring and std:vector from STL, 
-// these instances could be replaced with other classes, 
-// or plain C++ arrays and Unicode string pointers.
-// 
 // Author Michael Howard (mikehow@microsoft.com)
 // Jan 3rd, 2023
 
@@ -15,9 +10,9 @@
 #pragma comment(lib, "advapi32.lib")
 
 
-_Check_return_ bool RemovePrivileges(_In_ const std::vector<std::wstring> privsToRemove)
+_Check_return_ bool RemovePrivileges(_In_ const std::vector<std::wstring> &privsToRemove)
 {
-    if (privsToRemove.size() == 0)
+    if (privsToRemove.size() == 0 || privsToRemove.size() >= 24)
     {
         return false;
     }
@@ -28,7 +23,10 @@ _Check_return_ bool RemovePrivileges(_In_ const std::vector<std::wstring> privsT
         return false;
     }
 	
-    TOKEN_PRIVILEGES* pTokenPrivs = (TOKEN_PRIVILEGES*)malloc(sizeof(TOKEN_PRIVILEGES) + sizeof(LUID_AND_ATTRIBUTES) * privsToRemove.size());
+    // The buffer size calculation is safe from integer overflow because the only data that could be controlled by an attacker is the
+    // number of privs to remove, and this is constrained in the first line of this function
+    TOKEN_PRIVILEGES* pTokenPrivs = (TOKEN_PRIVILEGES*)new char[sizeof(TOKEN_PRIVILEGES) + sizeof(LUID_AND_ATTRIBUTES) * (privsToRemove.size() - 1)];
+
     if (!pTokenPrivs)
     {
         return false;
@@ -49,6 +47,7 @@ _Check_return_ bool RemovePrivileges(_In_ const std::vector<std::wstring> privsT
         pTokenPrivs->Privileges[i].Attributes = SE_PRIVILEGE_REMOVED;
     }
 
+    // See comment about integer overflow above
     if (!fRes || !AdjustTokenPrivileges(hToken, FALSE, pTokenPrivs, sizeof(TOKEN_PRIVILEGES) + sizeof(LUID_AND_ATTRIBUTES) * privsToRemove.size(), NULL, NULL))
     {
         fRes = false;
@@ -56,7 +55,7 @@ _Check_return_ bool RemovePrivileges(_In_ const std::vector<std::wstring> privsT
 	
     if (pTokenPrivs)
     {
-        free(pTokenPrivs);
+        delete[] pTokenPrivs;
     }
 	
     if (hToken)
@@ -82,7 +81,6 @@ _Check_return_ bool SetLowIntegrityLevel()
       SECURITY_MANDATORY_LOW_RID };
     integrityLabel.Label.Attributes = SE_GROUP_INTEGRITY | SE_GROUP_INTEGRITY_ENABLED;
     integrityLabel.Label.Sid = &sidLowIntegrity;
-
 
     bool fRes = true;
     DWORD dwTokenSize = 0;
@@ -111,7 +109,7 @@ int main() {
     // From https://learn.microsoft.com/en-us/windows/win32/secauthz/privilege-constants
     const std::vector<std::wstring> privs{ SE_BACKUP_NAME, SE_RESTORE_NAME, SE_TCB_NAME, SE_TAKE_OWNERSHIP_NAME, 
                                            SE_DEBUG_NAME, SE_IMPERSONATE_NAME,  SE_CREATE_GLOBAL_NAME, SE_CREATE_TOKEN_NAME, 
-                                           SE_SECURITY_NAME, SE_RELABEL_NAME, SE_LOAD_DRIVER_NAME, SE_SYSTEMTIME_NAME };
+                                           SE_SECURITY_NAME, SE_RELABEL_NAME, SE_LOAD_DRIVER_NAME, SE_SYSTEMTIME_NAME};
     
     // reduce privilge and integrity level
     if (RemovePrivileges(privs) == false || SetLowIntegrityLevel() == false) 
